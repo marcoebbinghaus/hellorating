@@ -24,7 +24,7 @@ class RecipeServiceTest {
     private lateinit var recipeService: RecipeService
 
     @Test
-    fun recipeWithoutPicturesIsReadCorrectly() {
+    fun `readRecipe with magharita pizza recipe ID returns full valid recipe`() {
         val recipe = recipeService.readRecipe(PIZZA_WITHOUT_PICS_ID)
         assertThat(recipe.isValidRecipe()).isTrue
         assertThat(recipe.id).isEqualTo(PIZZA_WITHOUT_PICS_ID)
@@ -36,7 +36,7 @@ class RecipeServiceTest {
     }
 
     @Test
-    fun recipeKoetbullarWithPicturesIsReadCorrectly() {
+    fun `readRecipe with koetbullar recipe ID returns full valid recipe`() {
         val recipe = recipeService.readRecipe(KOETBULLAR_WITH_PICS_ID)
         assertThat(recipe.isValidRecipe()).isTrue
         assertThat(recipe.id).isEqualTo(KOETBULLAR_WITH_PICS_ID)
@@ -48,7 +48,7 @@ class RecipeServiceTest {
     }
 
     @Test
-    fun recipeSpaghettiWithPicturesIsReadCorrectly() {
+    fun `readRecipe with spaghetti recipe ID returns full valid recipe`() {
         val recipe = recipeService.readRecipe(SPAGHETTI_WITH_PICS_ID)
         assertThat(recipe.isValidRecipe()).isTrue
         assertThat(recipe.id).isEqualTo(SPAGHETTI_WITH_PICS_ID)
@@ -60,7 +60,7 @@ class RecipeServiceTest {
     }
 
     @Test
-    fun recipeWithBrokenJsonReturnsErrorRecipe() {
+    fun `readRecipe with no broken returns ErrorRecipe`() {
         val recipe = recipeService.readRecipe(BROKEN_JSON_RECIPE)
         assertThat(recipe.id).isEqualTo(ERROR_ID)
         assertThat(recipe.isValidRecipe()).isFalse
@@ -72,7 +72,7 @@ class RecipeServiceTest {
     }
 
     @Test
-    fun recipeWithNoJsonReturnsErrorRecipe() {
+    fun `readRecipe with no json returns ErrorRecipe`() {
         val recipe = recipeService.readRecipe(NO_JSON_RECIPE)
         assertThat(recipe.id).isEqualTo(ERROR_ID)
         assertThat(recipe.isValidRecipe()).isFalse
@@ -84,14 +84,14 @@ class RecipeServiceTest {
     }
 
     @Test
-    fun recipeWithNonExistingIdThrowsException() {
+    fun `readRecipe with non-existing ID throws Exception`() {
         assertThrows(EntityNotFoundException::class.java) {
             recipeService.readRecipe(INVALID_RECIPE_ID)
         }
     }
 
     @Test
-    fun findAllRecipesWorksCorrectly() {
+    fun `readAllRecipes works correctly`() {
         val recipes = recipeService.readAllRecipes()
         assertThat(recipes.size).isEqualTo(VALID_RECIPES_COUNT)
         recipes.stream().forEach { assertThat(it.id).isGreaterThan(0) }

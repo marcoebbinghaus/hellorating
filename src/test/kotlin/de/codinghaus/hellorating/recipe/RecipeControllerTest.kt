@@ -4,6 +4,7 @@ import de.codinghaus.hellorating.exception.model.ErrorType
 import de.codinghaus.hellorating.exception.model.HttpError
 import de.codinghaus.hellorating.recipe.TestObjects.RecipeTestValues.INVALID_RECIPE_ID
 import de.codinghaus.hellorating.recipe.TestObjects.RecipeTestValues.KOETBULLAR_WITH_PICS_ID
+import de.codinghaus.hellorating.recipe.TestObjects.RecipeTestValues.VALID_RECIPES_COUNT
 import de.codinghaus.hellorating.recipe.model.Recipe
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -38,5 +39,11 @@ class RecipeControllerTest(@Autowired val restTemplate: TestRestTemplate) {
     assertThat(entity.body?.ownPicture).isNotBlank
   }
 
+  @Test
+  fun `getAllRecipes returns all valid recipes`() {
+    val entity = restTemplate.getForEntity<Collection<Recipe>>("/recipes")
+    assertThat(entity.statusCode).isEqualTo(HttpStatus.OK)
+    assertThat(entity.body?.size).isEqualTo(VALID_RECIPES_COUNT)
+  }
 
 }
