@@ -7,7 +7,7 @@ class TestObjects {
         val SPAGHETTI_WITH_PICS_ID = 3
         val BROKEN_JSON_RECIPE = 4
         val NO_JSON_RECIPE = 5
-        val INVALID_RECIPE_ID = 1337
+        val INVALID_RECIPE_ID = 666
 
         val VALID_RECIPES_COUNT = 3
         val ERROR_ID = -1

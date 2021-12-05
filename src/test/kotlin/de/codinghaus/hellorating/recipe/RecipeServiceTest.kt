@@ -1,4 +1,5 @@
 package de.codinghaus.hellorating.recipe
+import de.codinghaus.hellorating.configuration.ConfigurationService
 import de.codinghaus.hellorating.exception.model.EntityNotFoundException
 import de.codinghaus.hellorating.recipe.TestObjects.RecipeTestValues.BROKEN_JSON_RECIPE
 import de.codinghaus.hellorating.recipe.TestObjects.RecipeTestValues.ERROR_ID
@@ -10,18 +11,35 @@ import de.codinghaus.hellorating.recipe.TestObjects.RecipeTestValues.SPAGHETTI_W
 import de.codinghaus.hellorating.recipe.TestObjects.RecipeTestValues.VALID_RECIPES_COUNT
 import de.codinghaus.hellorating.recipe.model.isValidRecipe
 import org.assertj.core.api.Assertions.assertThat
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertThrows
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
+import java.io.File
 
 @SpringBootTest
 @ActiveProfiles("test")
-class RecipeServiceTest {
+class RecipeServiceTest(@Autowired val configurationService: ConfigurationService) {
 
     @Autowired
     private lateinit var recipeService: RecipeService
+
+    var testFilesRoot = configurationService.recipeBasePath()
+    var testFilesRootTemp = File("src/test/resources/tmp")
+
+    @BeforeEach
+    fun setup() {
+        testFilesRoot.copyRecursively(testFilesRootTemp)
+    }
+
+    @AfterEach
+    fun tearDown() {
+        testFilesRootTemp.copyRecursively(testFilesRoot, overwrite = true)
+        testFilesRootTemp.deleteRecursively()
+    }
 
     @Test
     fun `readRecipe with magharita pizza recipe ID returns full valid recipe`() {
@@ -95,5 +113,27 @@ class RecipeServiceTest {
         val recipes = recipeService.readAllRecipes()
         assertThat(recipes.size).isEqualTo(VALID_RECIPES_COUNT)
         recipes.stream().forEach { assertThat(it.id).isGreaterThan(0) }
+    }
+
+    @Test
+    fun `updateRecipe works correctly`() {
+        val recipeBeforeUpdate = recipeService.readRecipe(SPAGHETTI_WITH_PICS_ID)
+
+        val recipeAfterUpdate = recipeService.updateRecipeRating(SPAGHETTI_WITH_PICS_ID, 5)
+
+        assertThat(recipeBeforeUpdate.id).isEqualTo(recipeAfterUpdate.id)
+        assertThat(recipeBeforeUpdate.name).isEqualTo(recipeAfterUpdate.name)
+        assertThat(recipeBeforeUpdate.notes).isEqualTo(recipeAfterUpdate.notes)
+        assertThat(recipeBeforeUpdate.catalogPicture).isEqualTo(recipeAfterUpdate.catalogPicture)
+        assertThat(recipeBeforeUpdate.ownPicture).isEqualTo(recipeAfterUpdate.ownPicture)
+        assertThat(recipeBeforeUpdate.rating).isNotEqualTo(recipeAfterUpdate.rating)
+        assertThat(recipeAfterUpdate.rating).isEqualTo(5)
+    }
+
+    @Test
+    fun `updateRecipe with non-existing ID throws Exception`() {
+        assertThrows(EntityNotFoundException::class.java) {
+            recipeService.updateRecipeRating(INVALID_RECIPE_ID, 5)
+        }
     }
 }

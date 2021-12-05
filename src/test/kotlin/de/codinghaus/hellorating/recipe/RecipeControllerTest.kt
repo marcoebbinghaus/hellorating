@@ -1,49 +1,110 @@
 package de.codinghaus.hellorating.recipe
 
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import de.codinghaus.hellorating.configuration.ConfigurationService
 import de.codinghaus.hellorating.exception.model.ErrorType
-import de.codinghaus.hellorating.exception.model.HttpError
 import de.codinghaus.hellorating.recipe.TestObjects.RecipeTestValues.INVALID_RECIPE_ID
 import de.codinghaus.hellorating.recipe.TestObjects.RecipeTestValues.KOETBULLAR_WITH_PICS_ID
 import de.codinghaus.hellorating.recipe.TestObjects.RecipeTestValues.VALID_RECIPES_COUNT
-import de.codinghaus.hellorating.recipe.model.Recipe
-import org.assertj.core.api.Assertions.assertThat
+import org.hamcrest.CoreMatchers.`is`
+import org.hamcrest.CoreMatchers.equalTo
+import org.hamcrest.Matchers.greaterThan
+import org.hamcrest.Matchers.notNullValue
+import org.junit.jupiter.api.AfterEach
+import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.boot.test.web.client.TestRestTemplate
-import org.springframework.boot.test.web.client.getForEntity
-import org.springframework.http.HttpStatus
+import org.springframework.http.MediaType
 import org.springframework.test.context.ActiveProfiles
+import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.get
+import org.springframework.test.web.servlet.patch
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
+import java.io.File
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
-class RecipeControllerTest(@Autowired val restTemplate: TestRestTemplate) {
+@AutoConfigureMockMvc
+class RecipeControllerTest(
+    @Autowired val configurationService: ConfigurationService
+) {
+    @Autowired
+    private lateinit var mockMvc: MockMvc
 
-  @Test
-  fun `Recipe by ID with unknown ID returns Not Found`() {
-    val entity = restTemplate.getForEntity<HttpError>("/recipes/{recipeId}", INVALID_RECIPE_ID)
-    assertThat(entity.statusCode).isEqualTo(HttpStatus.NOT_FOUND)
-    assertThat(entity.body?.type).isEqualTo(ErrorType.ERROR)
-    assertThat(entity.body?.message).isNotBlank
-  }
+    var testFilesRoot = configurationService.recipeBasePath()
+    var testFilesRootTemp = File("src/test/resources/tmp")
 
-  @Test
-  fun `Recipe by ID with valid ID returns recipe`() {
-    val entity = restTemplate.getForEntity<Recipe>("/recipes/{recipeId}", KOETBULLAR_WITH_PICS_ID)
-    assertThat(entity.statusCode).isEqualTo(HttpStatus.OK)
-    assertThat(entity.body?.id).isPositive
-    assertThat(entity.body?.name).isNotBlank
-    assertThat(entity.body?.notes).isNotBlank
-    assertThat(entity.body?.rating).isPositive
-    assertThat(entity.body?.catalogPicture).isNotBlank
-    assertThat(entity.body?.ownPicture).isNotBlank
-  }
+    @BeforeEach
+    fun setup() {
+        testFilesRoot.copyRecursively(testFilesRootTemp)
+    }
 
-  @Test
-  fun `getAllRecipes returns all valid recipes`() {
-    val entity = restTemplate.getForEntity<Collection<Recipe>>("/recipes")
-    assertThat(entity.statusCode).isEqualTo(HttpStatus.OK)
-    assertThat(entity.body?.size).isEqualTo(VALID_RECIPES_COUNT)
-  }
+    @AfterEach
+    fun tearDown() {
+        testFilesRootTemp.copyRecursively(testFilesRoot, overwrite = true)
+        testFilesRootTemp.deleteRecursively()
+    }
 
+    @Test
+    fun `Recipe by ID with unknown ID returns Not Found`() {
+        mockMvc.get("/recipes/${INVALID_RECIPE_ID}") {
+        }.andExpect {
+            status { isNotFound() }
+            content { jsonPath("\$.type", equalTo(ErrorType.ERROR.name)) }
+            content { jsonPath("\$.message", equalTo("No recipe found for the given ID (${INVALID_RECIPE_ID})!")) }
+        }
+    }
+
+    @Test
+    fun `Recipe by ID with valid ID returns recipe`() {
+        mockMvc.get("/recipes/${KOETBULLAR_WITH_PICS_ID}") {
+        }.andExpect {
+            status { is2xxSuccessful() }
+            content { jsonPath("\$.id", greaterThan(0)) }
+            content { jsonPath("\$.name", equalTo("Kötbullar")) }
+            content { jsonPath("\$.notes", equalTo("Lief gut soweit!")) }
+            content { jsonPath("\$.rating", equalTo(8)) }
+            content { jsonPath("\$.catalogPicture", notNullValue()) }
+            content { jsonPath("\$.ownPicture", notNullValue()) }
+        }
+    }
+
+    @Test
+    fun `getAllRecipes returns all valid recipes`() {
+        mockMvc.get("/recipes") {
+        }.andExpect {
+            status { is2xxSuccessful() }
+            content { jsonPath("\$.length()", `is`(VALID_RECIPES_COUNT)) }
+        }
+    }
+
+    @Test
+    fun `Update Rating for recipe works`() {
+        mockMvc.get("/recipes/${KOETBULLAR_WITH_PICS_ID}")
+            .andExpect { status { is2xxSuccessful() } }
+            .andExpect { jsonPath("\$.rating").value(equals(2)) }
+
+        mockMvc.patch("/recipes/${KOETBULLAR_WITH_PICS_ID}") {
+            contentType = MediaType.APPLICATION_JSON
+            content = jacksonObjectMapper().writeValueAsString(hashMapOf(Pair("rating", 5)))
+            accept = MediaType.APPLICATION_JSON
+        }.andExpect {
+            status { is2xxSuccessful() }
+            content { jsonPath("\$.rating", equalTo(5)) }
+        }
+    }
+
+    @Test
+    fun `Update Rating for unknown recipe fails with 404`() {
+        mockMvc.patch("/recipes/${INVALID_RECIPE_ID}") {
+            contentType = MediaType.APPLICATION_JSON
+            content = jacksonObjectMapper().writeValueAsString(hashMapOf(Pair("rating", 5)))
+            accept = MediaType.APPLICATION_JSON
+        }.andExpect {
+            status { isNotFound() }
+            content { json("""{"type":"ERROR","message":"No recipe found for the given ID (${INVALID_RECIPE_ID})!"}""") }
+        }
+    }
 }

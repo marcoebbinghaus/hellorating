@@ -21,7 +21,9 @@ class RecipeController(val recipeService: RecipeService) {
 
     @PatchMapping("/{recipeId}")
     fun patchRecipe(@PathVariable recipeId:String, @RequestBody fields: Map<String, Any>): ResponseEntity<Recipe> {
-        return ResponseEntity(recipeService.readRecipe(Integer.parseInt(recipeId)), HttpStatus.OK)
+        val rating = fields["rating"] as Int
+        val updatedRecipe = recipeService.updateRecipeRating(Integer.parseInt(recipeId), rating)
+        return ResponseEntity(updatedRecipe, HttpStatus.OK)
     }
 
 }

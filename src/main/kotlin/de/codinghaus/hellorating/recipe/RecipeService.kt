@@ -11,16 +11,54 @@ import de.codinghaus.hellorating.recipe.model.isValidRecipe
 import org.apache.tomcat.util.codec.binary.Base64
 import org.springframework.stereotype.Component
 import java.io.File
+import java.nio.charset.Charset
 
 @Component
 class RecipeService(val configurationService: ConfigurationService) {
 
     val recipeSubPathPattern = "/recipe%03d"
 
-    fun readRecipe(recipeNo: Int): Recipe {
-        val completePath =
-            "${configurationService.recipeBasePath()}" + String.format(recipeSubPathPattern, recipeNo)
+    fun readAllRecipes(): Collection<Recipe> {
+        val recipes = mutableListOf<Recipe>()
+        val recipesFolder = File("${configurationService.recipeBasePath()}")
+        recipesFolder.walk().maxDepth(1).forEach { file ->
+            if (file.isDirectory && file.name.matches(Regex("recipe\\d{3}"))) {
+                recipes.add(readRecipe(file.absolutePath));
+            } else {
+                if (file != recipesFolder) {
+                    println("Skipped invalid folder '${file.name}'!")
+                }
+            }
+        }
+        return recipes.stream()
+            .filter { it.isValidRecipe() }
+            .sorted(compareBy(Recipe::id))
+            .toList()
+    }
+
+    fun readRecipe(id: Int): Recipe {
+        val completePath = fetchCompletePathForRecipeById(id)
         return readRecipe(completePath)
+    }
+
+    fun updateRecipeRating(recipeId: Int, rating: Int): Recipe {
+        if (rating < 0 || rating > 10) {
+            throw IllegalArgumentException("rating must be a number from 0 to 10!")
+        }
+        val recipeFolder = fetchFileForRecipeById(recipeId)
+        val recipe = readRecipe(recipeId);
+        recipe.rating = rating
+        applyRecipeDataToFile(recipe, recipeFolder)
+        return readRecipe(recipe.id)
+    }
+
+    private fun fetchFileForRecipeById(id: Int): File {
+        val completePath = fetchCompletePathForRecipeById(id)
+        return File(completePath)
+    }
+
+    private fun fetchCompletePathForRecipeById(id: Int): String {
+        return "${configurationService.recipeBasePath()}" + String.format(recipeSubPathPattern, id);
     }
 
     private fun readRecipe(completePathToRecipeFolder: String): Recipe {
@@ -68,21 +106,18 @@ class RecipeService(val configurationService: ConfigurationService) {
             null
         }
 
-    fun readAllRecipes(): Collection<Recipe> {
-        val recipes = mutableListOf<Recipe>()
-        val recipesFolder = File("${configurationService.recipeBasePath()}")
-        recipesFolder.walk().maxDepth(1).forEach { file ->
-            if (file.isDirectory && file.name.matches(Regex("recipe\\d{3}"))) {
-                recipes.add(readRecipe(file.absolutePath));
-            } else {
-                if (file != recipesFolder) {
-                    println("Skipped invalid folder '${file.name}'!")
-                }
-            }
+    private fun applyRecipeDataToFile(recipe: Recipe, recipeFolder: File) {
+        val recipeData = hashMapOf(Pair("name", recipe.name ?: ""), Pair("notes", recipe.notes ?: ""), Pair("rating", recipe.rating ?: 0))
+        File(recipeFolder, "recipe-data.json").writeText(jacksonObjectMapper().writeValueAsString(recipeData), Charset.forName("UTF8"))
+    }
+
+    private fun writeContentToFile(fileContent: String, fileName: String, recipeFolder: File) {
+        val ownPictureFile = recipeFolder.listFiles().find { it.absolutePath.endsWith(fileName) } ?: File(
+            recipeFolder,
+            fileName
+        )
+        ownPictureFile.printWriter().use { out ->
+            out.print(Base64.decodeBase64(fileContent))
         }
-        return recipes.stream()
-            .filter { it.isValidRecipe() }
-            .sorted(compareBy(Recipe::id))
-            .toList()
     }
 }
