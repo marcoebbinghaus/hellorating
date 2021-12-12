@@ -23,7 +23,7 @@ class RecipeService(val configurationService: ConfigurationService) {
         val recipesFolder = File("${configurationService.recipeBasePath()}")
         recipesFolder.walk().maxDepth(1).forEach { file ->
             if (file.isDirectory && file.name.matches(Regex("recipe\\d{3}"))) {
-                recipes.add(readRecipe(file.absolutePath));
+                recipes.add(readRecipeByPath(file.absolutePath));
             } else {
                 if (file != recipesFolder) {
                     println("Skipped invalid folder '${file.name}'!")
@@ -36,9 +36,9 @@ class RecipeService(val configurationService: ConfigurationService) {
             .toList()
     }
 
-    fun readRecipe(id: Int): Recipe {
+    fun readRecipeById(id: Int): Recipe {
         val completePath = fetchCompletePathForRecipeById(id)
-        return readRecipe(completePath)
+        return readRecipeByPath(completePath)
     }
 
     fun updateRecipeRating(recipeId: Int, rating: Int): Recipe {
@@ -46,10 +46,27 @@ class RecipeService(val configurationService: ConfigurationService) {
             throw IllegalArgumentException("rating must be a number from 0 to 10!")
         }
         val recipeFolder = fetchFileForRecipeById(recipeId)
-        val recipe = readRecipe(recipeId);
+        val recipe = readRecipeById(recipeId);
         recipe.rating = rating
         applyRecipeDataToFile(recipe, recipeFolder)
-        return readRecipe(recipe.id)
+        return readRecipeById(recipe.id)
+    }
+    fun createRecipe(name: String, notes: String = "", rating: Int): Recipe {
+        val existingRecipeCount = fetchRecipeFolderCount()
+        val newRecipeFolder = File("${configurationService.recipeBasePath()}/${String.format(recipeSubPathPattern, existingRecipeCount + 1)}")
+        val recipeData = createRecipeData(name, notes, rating)
+        File("${newRecipeFolder.absolutePath}/recipe-data.json").printWriter().use { out ->
+            out.print(recipeData)
+        }
+        return readRecipeById(Integer.parseInt(newRecipeFolder.name.takeLast(3)))
+    }
+
+    private fun createRecipeData(name: String, notes: String = "", rating: Int): String {
+        return jacksonObjectMapper().writeValueAsString(JsonRecipeData(name, notes, rating))
+    }
+
+    private fun fetchRecipeFolderCount(): Int {
+        return readAllRecipes().size
     }
 
     private fun fetchFileForRecipeById(id: Int): File {
@@ -58,10 +75,10 @@ class RecipeService(val configurationService: ConfigurationService) {
     }
 
     private fun fetchCompletePathForRecipeById(id: Int): String {
-        return "${configurationService.recipeBasePath()}" + String.format(recipeSubPathPattern, id);
+        return "${configurationService.recipeBasePath()}" + String.format(recipeSubPathPattern, id)
     }
 
-    private fun readRecipe(completePathToRecipeFolder: String): Recipe {
+    private fun readRecipeByPath(completePathToRecipeFolder: String): Recipe {
         val recipeFolder = File(completePathToRecipeFolder)
         var jsonRecipeData: JsonRecipeData? = null
         var recipeCatalogPicture: String? = null

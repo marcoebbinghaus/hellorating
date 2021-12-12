@@ -21,6 +21,7 @@ import org.springframework.test.context.ActiveProfiles
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.patch
+import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import java.io.File
 
@@ -94,6 +95,60 @@ class RecipeControllerTest(
             status { is2xxSuccessful() }
             content { jsonPath("\$.rating", equalTo(5)) }
         }
+    }
+
+    @Test
+    fun `create Rating for recipe with name and rating works`() {
+        mockMvc.post("/recipes") {
+            contentType = MediaType.APPLICATION_JSON
+            content = jacksonObjectMapper().writeValueAsString(hashMapOf(Pair("rating", 5), Pair("name", "Gulasch")))
+            accept = MediaType.APPLICATION_JSON
+        }
+            .andExpect { status { is2xxSuccessful() } }
+            .andExpect { jsonPath("\$.id").value(notNullValue()) }
+            .andExpect { jsonPath("\$.name").value(equals("Gulasch")) }
+            .andExpect { jsonPath("\$.rating").value(equals(5)) }
+            .andExpect { jsonPath("\$.notes").value(equals("")) }
+    }
+
+    @Test
+    fun `create Rating for recipe with name and rating and notes works`() {
+        mockMvc.post("/recipes") {
+            contentType = MediaType.APPLICATION_JSON
+            content = jacksonObjectMapper().writeValueAsString(hashMapOf(Pair("rating", 5),
+                Pair("name", "Gulasch"),
+                Pair("notes", "Taugt schon was.")))
+            accept = MediaType.APPLICATION_JSON
+        }
+            .andExpect { status { is2xxSuccessful() } }
+            .andExpect { jsonPath("\$.id").value(notNullValue()) }
+            .andExpect { jsonPath("\$.name").value(equals("Gulasch")) }
+            .andExpect { jsonPath("\$.rating").value(equals(5)) }
+            .andExpect { jsonPath("\$.notes").value(equals("Taugt schon was.")) }
+    }
+
+    @Test
+    fun `create Rating for recipe without name returns bad request`() {
+        mockMvc.post("/recipes") {
+            contentType = MediaType.APPLICATION_JSON
+            content = jacksonObjectMapper().writeValueAsString(hashMapOf(Pair("rating", 5),
+                Pair("notes", "Taugt schon was.")))
+            accept = MediaType.APPLICATION_JSON
+        }
+            .andExpect { status { isBadRequest() } }
+            .andExpect { content { json("""{"type":"ERROR","message":"Property 'name' must be given when posting recipes."}""") } }
+    }
+
+    @Test
+    fun `create Rating for recipe without rating returns bad request`() {
+        mockMvc.post("/recipes") {
+            contentType = MediaType.APPLICATION_JSON
+            content = jacksonObjectMapper().writeValueAsString(hashMapOf(Pair("name", "Gulasch"),
+                Pair("notes", "Taugt schon was.")))
+            accept = MediaType.APPLICATION_JSON
+        }
+            .andExpect { status { isBadRequest() } }
+            .andExpect { content { json("""{"type":"ERROR","message":"Property 'rating' must be given when posting recipes."}""") } }
     }
 
     @Test

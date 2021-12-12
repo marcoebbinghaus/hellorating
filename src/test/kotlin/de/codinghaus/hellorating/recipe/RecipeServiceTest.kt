@@ -37,13 +37,14 @@ class RecipeServiceTest(@Autowired val configurationService: ConfigurationServic
 
     @AfterEach
     fun tearDown() {
+        testFilesRoot.deleteRecursively()
         testFilesRootTemp.copyRecursively(testFilesRoot, overwrite = true)
         testFilesRootTemp.deleteRecursively()
     }
 
     @Test
     fun `readRecipe with magharita pizza recipe ID returns full valid recipe`() {
-        val recipe = recipeService.readRecipe(PIZZA_WITHOUT_PICS_ID)
+        val recipe = recipeService.readRecipeById(PIZZA_WITHOUT_PICS_ID)
         assertThat(recipe.isValidRecipe()).isTrue
         assertThat(recipe.id).isEqualTo(PIZZA_WITHOUT_PICS_ID)
         assertThat(recipe.name).isNotBlank
@@ -55,7 +56,7 @@ class RecipeServiceTest(@Autowired val configurationService: ConfigurationServic
 
     @Test
     fun `readRecipe with koetbullar recipe ID returns full valid recipe`() {
-        val recipe = recipeService.readRecipe(KOETBULLAR_WITH_PICS_ID)
+        val recipe = recipeService.readRecipeById(KOETBULLAR_WITH_PICS_ID)
         assertThat(recipe.isValidRecipe()).isTrue
         assertThat(recipe.id).isEqualTo(KOETBULLAR_WITH_PICS_ID)
         assertThat(recipe.name).isNotBlank
@@ -67,7 +68,7 @@ class RecipeServiceTest(@Autowired val configurationService: ConfigurationServic
 
     @Test
     fun `readRecipe with spaghetti recipe ID returns full valid recipe`() {
-        val recipe = recipeService.readRecipe(SPAGHETTI_WITH_PICS_ID)
+        val recipe = recipeService.readRecipeById(SPAGHETTI_WITH_PICS_ID)
         assertThat(recipe.isValidRecipe()).isTrue
         assertThat(recipe.id).isEqualTo(SPAGHETTI_WITH_PICS_ID)
         assertThat(recipe.name).isNotBlank
@@ -79,7 +80,7 @@ class RecipeServiceTest(@Autowired val configurationService: ConfigurationServic
 
     @Test
     fun `readRecipe with no broken returns ErrorRecipe`() {
-        val recipe = recipeService.readRecipe(BROKEN_JSON_RECIPE)
+        val recipe = recipeService.readRecipeById(BROKEN_JSON_RECIPE)
         assertThat(recipe.id).isEqualTo(ERROR_ID)
         assertThat(recipe.isValidRecipe()).isFalse
         assertThat(recipe.name).isNull()
@@ -91,7 +92,7 @@ class RecipeServiceTest(@Autowired val configurationService: ConfigurationServic
 
     @Test
     fun `readRecipe with no json returns ErrorRecipe`() {
-        val recipe = recipeService.readRecipe(NO_JSON_RECIPE)
+        val recipe = recipeService.readRecipeById(NO_JSON_RECIPE)
         assertThat(recipe.id).isEqualTo(ERROR_ID)
         assertThat(recipe.isValidRecipe()).isFalse
         assertThat(recipe.name).isNull()
@@ -104,7 +105,7 @@ class RecipeServiceTest(@Autowired val configurationService: ConfigurationServic
     @Test
     fun `readRecipe with non-existing ID throws Exception`() {
         assertThrows(EntityNotFoundException::class.java) {
-            recipeService.readRecipe(INVALID_RECIPE_ID)
+            recipeService.readRecipeById(INVALID_RECIPE_ID)
         }
     }
 
@@ -117,7 +118,7 @@ class RecipeServiceTest(@Autowired val configurationService: ConfigurationServic
 
     @Test
     fun `updateRecipe works correctly`() {
-        val recipeBeforeUpdate = recipeService.readRecipe(SPAGHETTI_WITH_PICS_ID)
+        val recipeBeforeUpdate = recipeService.readRecipeById(SPAGHETTI_WITH_PICS_ID)
 
         val recipeAfterUpdate = recipeService.updateRecipeRating(SPAGHETTI_WITH_PICS_ID, 5)
 
@@ -135,5 +136,18 @@ class RecipeServiceTest(@Autowired val configurationService: ConfigurationServic
         assertThrows(EntityNotFoundException::class.java) {
             recipeService.updateRecipeRating(INVALID_RECIPE_ID, 5)
         }
+    }
+
+    @Test
+    fun `create works correctly`() {
+        val createdRecipe = recipeService.createRecipe("Tacos Mexicana", "sehr geil.", 8)
+
+        assertThat(File(testFilesRoot.absolutePath + "/recipe004")).exists();
+        assertThat(createdRecipe.id).isNotNull
+        assertThat(createdRecipe.name).isEqualTo("Tacos Mexicana")
+        assertThat(createdRecipe.notes).isEqualTo("sehr geil.")
+        assertThat(createdRecipe.rating).isEqualTo( 8)
+        assertThat(createdRecipe.ownPicture).isNull()
+        assertThat(createdRecipe.catalogPicture).isNull()
     }
 }

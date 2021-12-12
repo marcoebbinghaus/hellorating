@@ -17,4 +17,9 @@ class ExceptionHandlers : ResponseEntityExceptionHandler() {
     fun handleEntityNotFound(ex: EntityNotFoundException, request: WebRequest): ResponseEntity<HttpError> {
         return ResponseEntity(HttpError(ErrorType.ERROR, ex.message), HttpStatus.NOT_FOUND)
     }
+
+    @ExceptionHandler(value = [(IllegalArgumentException::class)])
+    fun handleIllegalArgument(ex: IllegalArgumentException, request: WebRequest): ResponseEntity<HttpError> {
+        return ResponseEntity(HttpError(ErrorType.ERROR, ex.message ?: ""), HttpStatus.BAD_REQUEST)
+    }
 }
