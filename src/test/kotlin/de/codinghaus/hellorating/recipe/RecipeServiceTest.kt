@@ -117,7 +117,7 @@ class RecipeServiceTest(@Autowired val configurationService: ConfigurationServic
     }
 
     @Test
-    fun `updateRecipe works correctly`() {
+    fun `update recipe rating works correctly`() {
         val recipeBeforeUpdate = recipeService.readRecipeById(SPAGHETTI_WITH_PICS_ID)
 
         val recipeAfterUpdate = recipeService.updateRecipeRating(SPAGHETTI_WITH_PICS_ID, 5)
@@ -129,6 +129,22 @@ class RecipeServiceTest(@Autowired val configurationService: ConfigurationServic
         assertThat(recipeBeforeUpdate.ownPicture).isEqualTo(recipeAfterUpdate.ownPicture)
         assertThat(recipeBeforeUpdate.rating).isNotEqualTo(recipeAfterUpdate.rating)
         assertThat(recipeAfterUpdate.rating).isEqualTo(5)
+    }
+
+    @Test
+    fun `update recipe notes works correctly`() {
+        val recipeBeforeUpdate = recipeService.readRecipeById(SPAGHETTI_WITH_PICS_ID)
+
+        val newNotes = "New Notes."
+        val recipeAfterUpdate = recipeService.updateRecipeNotes(SPAGHETTI_WITH_PICS_ID, newNotes)
+
+        assertThat(recipeBeforeUpdate.id).isEqualTo(recipeAfterUpdate.id)
+        assertThat(recipeBeforeUpdate.name).isEqualTo(recipeAfterUpdate.name)
+        assertThat(recipeBeforeUpdate.rating).isEqualTo(recipeAfterUpdate.rating)
+        assertThat(recipeBeforeUpdate.catalogPicture).isEqualTo(recipeAfterUpdate.catalogPicture)
+        assertThat(recipeBeforeUpdate.ownPicture).isEqualTo(recipeAfterUpdate.ownPicture)
+        assertThat(recipeBeforeUpdate.notes).isNotEqualTo(recipeAfterUpdate.notes)
+        assertThat(recipeAfterUpdate.notes).isEqualTo(newNotes)
     }
 
     @Test

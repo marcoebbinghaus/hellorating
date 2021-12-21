@@ -82,7 +82,7 @@ class RecipeControllerTest(
     }
 
     @Test
-    fun `Update Rating for recipe works`() {
+    fun `Update Rating for recipe works with payload containing rating`() {
         mockMvc.get("/recipes/${KOETBULLAR_WITH_PICS_ID}")
             .andExpect { status { is2xxSuccessful() } }
             .andExpect { jsonPath("\$.rating").value(equals(2)) }
@@ -94,6 +94,23 @@ class RecipeControllerTest(
         }.andExpect {
             status { is2xxSuccessful() }
             content { jsonPath("\$.rating", equalTo(5)) }
+        }
+    }
+
+    @Test
+    fun `Update Rating for recipe works with payload containing notes`() {
+        mockMvc.get("/recipes/${KOETBULLAR_WITH_PICS_ID}")
+            .andExpect { status { is2xxSuccessful() } }
+            .andExpect { jsonPath("\$.notes").value(equals("Lief gut soweit!")) }
+
+        val payload = hashMapOf<String, Any>(Pair("notes", "Lief ganz gut soweit!"));
+        mockMvc.patch("/recipes/${KOETBULLAR_WITH_PICS_ID}") {
+            contentType = MediaType.APPLICATION_JSON
+            content = jacksonObjectMapper().writeValueAsString(payload)
+            accept = MediaType.APPLICATION_JSON
+        }.andExpect {
+            status { is2xxSuccessful() }
+            content { jsonPath("\$.notes", equalTo(payload["notes"])) }
         }
     }
 

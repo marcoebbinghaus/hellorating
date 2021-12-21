@@ -46,11 +46,20 @@ class RecipeService(val configurationService: ConfigurationService) {
             throw IllegalArgumentException("rating must be a number from 0 to 10!")
         }
         val recipeFolder = fetchFileForRecipeById(recipeId)
-        val recipe = readRecipeById(recipeId);
+        val recipe = readRecipeById(recipeId)
         recipe.rating = rating
         applyRecipeDataToFile(recipe, recipeFolder)
         return readRecipeById(recipe.id)
     }
+
+    fun updateRecipeNotes(recipeId: Int, notes: String): Recipe {
+        val recipeFolder = fetchFileForRecipeById(recipeId)
+        val recipe = readRecipeById(recipeId)
+        recipe.notes = notes
+        applyRecipeDataToFile(recipe, recipeFolder)
+        return readRecipeById(recipe.id)
+    }
+
     fun createRecipe(name: String, notes: String = "", rating: Int): Recipe {
         val existingRecipeCount = fetchRecipeFolderCount()
         val newRecipeFolder = File("${configurationService.recipeBasePath()}/${String.format(recipeSubPathPattern, existingRecipeCount + 1)}")
