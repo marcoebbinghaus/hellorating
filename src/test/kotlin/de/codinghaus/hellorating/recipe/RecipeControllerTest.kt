@@ -115,6 +115,35 @@ class RecipeControllerTest(
     }
 
     @Test
+    fun `Update Rating for recipe works with payload containing name`() {
+        mockMvc.get("/recipes/${KOETBULLAR_WITH_PICS_ID}")
+            .andExpect { status { is2xxSuccessful() } }
+            .andExpect { jsonPath("\$.name").value(equals("Kötbullar")) }
+
+        val payload = hashMapOf<String, Any>(Pair("name", "Kötbullar Originale!"));
+        mockMvc.patch("/recipes/${KOETBULLAR_WITH_PICS_ID}") {
+            contentType = MediaType.APPLICATION_JSON
+            content = jacksonObjectMapper().writeValueAsString(payload)
+            accept = MediaType.APPLICATION_JSON
+        }.andExpect {
+            status { is2xxSuccessful() }
+            content { jsonPath("\$.name", equalTo(payload["name"])) }
+        }
+    }
+
+    @Test
+    fun `updateRecipe with non-existing ID returns not found`() {
+        val payload = hashMapOf<String, Any>(Pair("name", "Kötbullar Originale!"));
+        mockMvc.patch("/recipes/${INVALID_RECIPE_ID}") {
+            contentType = MediaType.APPLICATION_JSON
+            content = jacksonObjectMapper().writeValueAsString(payload)
+            accept = MediaType.APPLICATION_JSON
+        }.andExpect {
+            status { isNotFound() }
+        }
+    }
+
+    @Test
     fun `create Rating for recipe with name and rating works`() {
         mockMvc.post("/recipes") {
             contentType = MediaType.APPLICATION_JSON

@@ -10,6 +10,7 @@ import de.codinghaus.hellorating.recipe.TestObjects.RecipeTestValues.PIZZA_WITHO
 import de.codinghaus.hellorating.recipe.TestObjects.RecipeTestValues.SPAGHETTI_WITH_PICS_ID
 import de.codinghaus.hellorating.recipe.TestObjects.RecipeTestValues.VALID_RECIPES_COUNT
 import de.codinghaus.hellorating.recipe.model.isValidRecipe
+import org.apache.tomcat.util.codec.binary.Base64
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.assertThrows
@@ -19,6 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.test.context.ActiveProfiles
 import java.io.File
+import java.util.*
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -117,41 +119,49 @@ class RecipeServiceTest(@Autowired val configurationService: ConfigurationServic
     }
 
     @Test
-    fun `update recipe rating works correctly`() {
-        val recipeBeforeUpdate = recipeService.readRecipeById(SPAGHETTI_WITH_PICS_ID)
-
-        val recipeAfterUpdate = recipeService.updateRecipeRating(SPAGHETTI_WITH_PICS_ID, 5)
-
-        assertThat(recipeBeforeUpdate.id).isEqualTo(recipeAfterUpdate.id)
-        assertThat(recipeBeforeUpdate.name).isEqualTo(recipeAfterUpdate.name)
-        assertThat(recipeBeforeUpdate.notes).isEqualTo(recipeAfterUpdate.notes)
-        assertThat(recipeBeforeUpdate.catalogPicture).isEqualTo(recipeAfterUpdate.catalogPicture)
-        assertThat(recipeBeforeUpdate.ownPicture).isEqualTo(recipeAfterUpdate.ownPicture)
-        assertThat(recipeBeforeUpdate.rating).isNotEqualTo(recipeAfterUpdate.rating)
-        assertThat(recipeAfterUpdate.rating).isEqualTo(5)
-    }
-
-    @Test
-    fun `update recipe notes works correctly`() {
+    fun `apply recipe data works correctly`() {
         val recipeBeforeUpdate = recipeService.readRecipeById(SPAGHETTI_WITH_PICS_ID)
 
         val newNotes = "New Notes."
-        val recipeAfterUpdate = recipeService.updateRecipeNotes(SPAGHETTI_WITH_PICS_ID, newNotes)
+        val newName = "New Name"
+        val newRating = 8
+        val updatedRecipe = recipeBeforeUpdate.copy(recipeBeforeUpdate.id, recipeBeforeUpdate.name, recipeBeforeUpdate.notes,
+            recipeBeforeUpdate.rating, recipeBeforeUpdate.catalogPicture, recipeBeforeUpdate.ownPicture)
+        updatedRecipe.notes = newNotes
+        updatedRecipe.name = newName
+        updatedRecipe.rating = newRating
+
+        val recipeAfterUpdate = recipeService.applyRecipeDataToFile(updatedRecipe)
 
         assertThat(recipeBeforeUpdate.id).isEqualTo(recipeAfterUpdate.id)
-        assertThat(recipeBeforeUpdate.name).isEqualTo(recipeAfterUpdate.name)
-        assertThat(recipeBeforeUpdate.rating).isEqualTo(recipeAfterUpdate.rating)
         assertThat(recipeBeforeUpdate.catalogPicture).isEqualTo(recipeAfterUpdate.catalogPicture)
         assertThat(recipeBeforeUpdate.ownPicture).isEqualTo(recipeAfterUpdate.ownPicture)
         assertThat(recipeBeforeUpdate.notes).isNotEqualTo(recipeAfterUpdate.notes)
         assertThat(recipeAfterUpdate.notes).isEqualTo(newNotes)
+        assertThat(recipeBeforeUpdate.name).isNotEqualTo(recipeAfterUpdate.name)
+        assertThat(recipeAfterUpdate.name).isEqualTo(newName)
+        assertThat(recipeBeforeUpdate.rating).isNotEqualTo(recipeAfterUpdate.rating)
+        assertThat(recipeAfterUpdate.rating).isEqualTo(newRating)
     }
 
     @Test
-    fun `updateRecipe with non-existing ID throws Exception`() {
-        assertThrows(EntityNotFoundException::class.java) {
-            recipeService.updateRecipeRating(INVALID_RECIPE_ID, 5)
-        }
+    fun `apply picture data works correctly`() {
+        val recipeBeforeUpdate = recipeService.readRecipeById(SPAGHETTI_WITH_PICS_ID)
+
+        val newCatalogPictureFileContent = "abcd"
+        val newOwnPictureFileContent = "efgh"
+        recipeService.writePictureDataToFile(newCatalogPictureFileContent.toByteArray(), "catalog.jpeg", SPAGHETTI_WITH_PICS_ID)
+        recipeService.writePictureDataToFile(newOwnPictureFileContent.toByteArray(), "own.jpeg", SPAGHETTI_WITH_PICS_ID)
+
+        val recipeAfterUpdate = recipeService.readRecipeById(SPAGHETTI_WITH_PICS_ID)
+
+        assertThat(recipeBeforeUpdate.id).isEqualTo(recipeAfterUpdate.id)
+        assertThat(recipeBeforeUpdate.catalogPicture).isNotEqualTo(recipeAfterUpdate.catalogPicture)
+        assertThat(recipeBeforeUpdate.ownPicture).isNotEqualTo(recipeAfterUpdate.ownPicture)
+        assertThat(String(Base64.decodeBase64(recipeAfterUpdate.catalogPicture)))
+            .isEqualTo(newCatalogPictureFileContent)
+        assertThat(String(Base64.decodeBase64(recipeAfterUpdate.ownPicture)))
+            .isEqualTo(newOwnPictureFileContent)
     }
 
     @Test
